@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int     @id @default(autoincrement())
+  username String  @unique
+  password String
+  enabled  Boolean @default(true)
+  locked   Boolean @default(false)
+
+  person_id String? @unique
+  person    Person? @relation(fields: [person_id], references: [nui])
+
+  @@map("users")
+}
+
+model Person {
+  nui       String  @id
+  firstname String
+  lastname  String
+  address   String?
+  phone     String?
+  status    Boolean @default(true)
+  is_delete Boolean @default(false)
+
+  uep_id   Int?
+  category Category? @relation(fields: [uep_id], references: [id])
+
+  accounts    Cuenta[]
+  credits     Credit[]
+  attendances Attendance[] // ← CORRECCIÓN NECESARIA
+  user        User?
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  sector    String?
+  location  String?
+  createdAt DateTime @default(now())
+
+  persons Person[]
+}
+
+model Cuenta {
+  id          Int      @id @default(autoincrement())
+  description String?
+  created_at  DateTime @default(now())
+  balance     Decimal  @default(0)
+  person_id   String
+  estatus     Boolean  @default(true)
+
+  person  Person         @relation(fields: [person_id], references: [nui])
+  aportes Aporte[]
+  credits Credit[]
+  trans   Transactions[]
+  amort   Amortization[]
+}
+
+model Aporte {
+  id        Int      @id @default(autoincrement())
+  amount    Decimal
+  date      DateTime
+  cuenta_id Int
+
+  cuenta Cuenta @relation(fields: [cuenta_id], references: [id])
+}
+
+model Credit {
+  id           Int       @id @default(autoincrement())
+  amount       Decimal
+  interestRate Decimal
+  start_date   DateTime
+  end_date     DateTime?
+  status       String
+  person_id    String
+  cuenta_id    Int?
+
+  person Person  @relation(fields: [person_id], references: [nui])
+  cuenta Cuenta? @relation(fields: [cuenta_id], references: [id])
+
+  amort Amortization[]
+}
+
+model Fines {
+  id_multa    Int      @id @default(autoincrement())
+  id_socio    Int
+  id_reunion  Int
+  motivo      String
+  monto       Decimal
+  fecha_multa DateTime
+  estado_pago String
+  observacion String?
+}
+
+model Transactions {
+  id             Int      @id @default(autoincrement())
+  cuenta_id      Int
+  tipo           String
+  monto          Decimal
+  fecha          DateTime @default(now())
+  description    String?
+  registrado_por String
+  saldo_actual   Decimal
+
+  cuenta Cuenta @relation(fields: [cuenta_id], references: [id])
+}
+
+model Amortization {
+  id            Int      @id @default(autoincrement())
+  monto_interes Decimal
+  fecha_calculo DateTime
+  credito_id    Int
+  cuenta_id     Int
+
+  credit Credit @relation(fields: [credito_id], references: [id])
+  cuenta Cuenta @relation(fields: [cuenta_id], references: [id])
+}
+
+model Attendance {
+  id         Int      @id @default(autoincrement())
+  fecha      DateTime @default(now())
+  socio_id   String
+  estado     String // ASISTIO | TARDE | FALTA
+  reunion_id Int
+
+  person Person @relation(fields: [socio_id], references: [nui])
+
+  @@map("attendance")
+}
