@@ -68,4 +68,27 @@ export class CreditService {
       where: { id },
     });
   }
+
+  // Nuevo método para créditos especiales
+  async findSpecialCredits() {
+    const credits = await this.prisma.credit.findMany({
+      where: {
+        status: 'aprobado', // filtro ejemplo, cambia según tu lógica
+        amount: {
+          gt: 200,          // ejemplo: monto mayor a 200
+        },
+      },
+      include: {
+        person: true,
+      },
+    });
+
+    return credits.map(c => ({
+      id: c.id,
+      fullname: `${c.person.firstname} ${c.person.lastname}`,
+      amount: Number(c.amount),
+      interestRate: Number(c.interestRate),
+      totalToPay: Number(c.amount) + Number(c.interestRate), // suma directa, cambia si necesitas calcular % de interés
+    }));
+  }
 }

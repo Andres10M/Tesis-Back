@@ -17,6 +17,11 @@ export class CreditController {
     return this.creditService.findAll();
   }
 
+  @Get('especiales')
+  getSpecialCredits() {
+    return this.creditService.findSpecialCredits();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.creditService.findOne(+id);
