@@ -1,7 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { AporteService } from './aporte.service';
 import { CreateAporteDto } from './dto/create-aporte.dto';
-import { UpdateAporteDto } from './dto/update-aporte.dto';
 
 @Controller('aporte')
 export class AporteController {
@@ -16,20 +15,4 @@ export class AporteController {
   findAll() {
     return this.aporteService.findAll();
   }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.aporteService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateAporteDto) {
-    return this.aporteService.update(+id, dto);
-  }
-
- @Delete(':id')
-remove(@Param('id') id: string) {
-  return this.aporteService.remove(+id);
-}
-
 }

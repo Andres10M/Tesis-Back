@@ -68,11 +68,15 @@ model Cuenta {
 
 model Aporte {
   id        Int      @id @default(autoincrement())
-  amount    Decimal
-  date      DateTime
+  amount    Decimal  @default(2.00)   // siempre $2
+  date      DateTime @default(now())
+  mes       Int
+  anio      Int
   cuenta_id Int
 
   cuenta Cuenta @relation(fields: [cuenta_id], references: [id])
+
+  @@unique([cuenta_id, mes, anio]) // Impide 2 aportes en el mismo mes
 }
 
 model Credit {
@@ -127,13 +131,26 @@ model Amortization {
 }
 
 model Attendance {
-  id         Int      @id @default(autoincrement())
-  fecha      DateTime @default(now())
-  socio_id   String
-  estado     String // ASISTIO | TARDE | FALTA
-  reunion_id Int
+  id          Int      @id @default(autoincrement())
+  fecha       DateTime @default(now())
+  socioId     String
+  estado      String     // ASISTIO | TARDE | FALTA
+  observacion String?
+  justificado Boolean    @default(false)   // 🔥 NUEVO
+  multa       Decimal    @default(0)
+  reunionId   Int
 
-  person Person @relation(fields: [socio_id], references: [nui])
+  person  Person  @relation(fields: [socioId], references: [nui])
+  meeting Meeting @relation(fields: [reunionId], references: [id])
 
   @@map("attendance")
+}
+
+
+model Meeting {
+  id          Int          @id @default(autoincrement())
+  fecha       DateTime
+  descripcion String?
+  createdAt   DateTime     @default(now())
+  attendances Attendance[]
 }

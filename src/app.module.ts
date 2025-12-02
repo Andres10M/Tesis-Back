@@ -10,6 +10,7 @@ import { FinesModule } from './fines/fines.module';
 import { PersonModule } from './person/person.module';
 import { TransactionModule } from './transaction/transaction.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { MeetingModule } from './meeting/meeting.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     PersonModule,
     TransactionModule,
     AttendanceModule,
+    MeetingModule,
   ],
   controllers: [], // Puedes agregar controllers globales si los necesitas
   providers: [],   // Puedes agregar servicios globales si los necesitas

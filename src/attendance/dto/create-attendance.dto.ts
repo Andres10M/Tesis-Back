@@ -1,14 +1,24 @@
-import { IsNotEmpty, IsString, IsInt } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class CreateAttendanceDto {
   @IsString()
-  @IsNotEmpty()
-  socio_id: string;   // Person.nui
+  socioId: string;
 
   @IsString()
-  @IsNotEmpty()
-  estado: string;     // ASISTIO | TARDE | FALTA
+  estado: string; // ASISTIO | TARDE | FALTA
+
+  @IsOptional()
+  @IsString()
+  observacion?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  justificado?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  multa?: number;
 
   @IsInt()
-  reunion_id: number;
+  reunionId: number;
 }
