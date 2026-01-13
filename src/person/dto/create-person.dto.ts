@@ -1,13 +1,16 @@
-import { IsString, IsOptional, IsBoolean, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNumberString, Length, Matches } from 'class-validator';
 
 export class CreatePersonDto {
-  @IsString()
+  @IsNumberString({}, { message: 'La cédula solo debe contener números' })
+  @Length(10, 10, { message: 'La cédula debe tener exactamente 10 números' })
   nui: string;
 
   @IsString()
+  @Matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/, { message: 'Nombre inválido' })
   firstname: string;
 
   @IsString()
+  @Matches(/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/, { message: 'Apellido inválido' })
   lastname: string;
 
   @IsOptional()
@@ -23,10 +26,8 @@ export class CreatePersonDto {
   status?: boolean;
 
   @IsOptional()
-  @IsBoolean()
-  is_delete?: boolean;
+  isDelete?: boolean;
 
   @IsOptional()
-  @IsNumber()
-  uep_id?: number;
+  categoryId?: number;
 }

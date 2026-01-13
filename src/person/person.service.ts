@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
@@ -7,54 +7,98 @@ import { UpdatePersonDto } from './dto/update-person.dto';
 export class PersonService {
   constructor(private prisma: PrismaService) {}
 
-  create(dto: CreatePersonDto) {
-    return this.prisma.person.create({
-      data: dto,
-    });
-  }
-
   findAll() {
     return this.prisma.person.findMany({
-      include: {
-        category: true,
-        accounts: true,
-        credits: true,
-      },
+      where: { isDelete: false },
+      orderBy: { orderIndex: 'asc' }, // ordenar por orderIndex
     });
   }
 
-  async findOne(nui: string) {
+  async create(dto: CreatePersonDto) {
+    const exists = await this.prisma.person.findUnique({
+      where: { nui: dto.nui },
+    });
+
+    if (exists) {
+      throw new BadRequestException('La cédula ya existe');
+    }
+
+    const created = await this.prisma.person.create({ data: dto });
+    console.log(`✅ Socio creado: ${created.firstname} ${created.lastname} (${created.nui})`);
+    return created;
+  }
+
+  async updateSafe(oldNui: string, dto: UpdatePersonDto) {
     const person = await this.prisma.person.findUnique({
-      where: { nui },
-      include: {
-        category: true,
-        accounts: true,
-        credits: true,
-      },
+      where: { nui: oldNui },
     });
 
     if (!person) {
-      throw new NotFoundException(`Persona con NUI ${nui} no encontrada`);
+      throw new BadRequestException('Socio no encontrado');
     }
 
-    return person;
-  }
+    // SIN CAMBIO DE CÉDULA
+    if (!dto.nui || dto.nui === oldNui) {
+      const updated = await this.prisma.person.update({
+        where: { nui: oldNui },
+        data: {
+          firstname: dto.firstname ?? person.firstname,
+          lastname: dto.lastname ?? person.lastname,
+          address: dto.address ?? person.address,
+          phone: dto.phone ?? person.phone,
+          status: dto.status ?? person.status,
+          categoryId: dto.categoryId ?? person.categoryId,
+        },
+      });
+      console.log(`✏️ Socio actualizado (sin cambio de cédula): ${updated.firstname} ${updated.lastname} (${updated.nui})`);
+      return updated;
+    }
 
-  async update(nui: string, dto: UpdatePersonDto) {
-    await this.findOne(nui);
+    // CAMBIO DE CÉDULA (TRANSACCIÓN SEGURA)
+    return this.prisma.$transaction(async tx => {
+      const exists = await tx.person.findUnique({
+        where: { nui: dto.nui! },
+      });
 
-    return this.prisma.person.update({
-      where: { nui },
-      data: dto,
+      if (exists) {
+        throw new BadRequestException('La nueva cédula ya existe');
+      }
+
+      const created = await tx.person.create({
+        data: {
+          nui: dto.nui!,
+          firstname: dto.firstname ?? person.firstname,
+          lastname: dto.lastname ?? person.lastname,
+          address: person.address,
+          phone: person.phone,
+          status: person.status,
+          categoryId: person.categoryId,
+          orderIndex: person.orderIndex, // conservar posición
+        },
+      });
+
+      await tx.attendance.updateMany({
+        where: { socioId: oldNui },
+        data: { socioId: dto.nui! },
+      });
+
+      await tx.person.update({
+        where: { nui: oldNui },
+        data: { isDelete: true },
+      });
+
+      console.log(`✏️ Socio actualizado con cambio de cédula: ${created.firstname} ${created.lastname} (${created.nui})`);
+      return created;
     });
   }
 
   async remove(nui: string) {
-    await this.findOne(nui);
-
-    return this.prisma.person.update({
+    const removed = await this.prisma.person.update({
       where: { nui },
-      data: { is_delete: true },
+      data: { isDelete: true },
     });
+
+    console.log(`🗑️ Socio eliminado: ${removed.firstname} ${removed.lastname} (${removed.nui})`);
+    return { message: 'Socio eliminado correctamente' };
   }
 }

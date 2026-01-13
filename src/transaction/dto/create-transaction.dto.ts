@@ -1,25 +1,15 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsDateString } from 'class-validator';
+import { IsInt, IsString, IsNumber } from 'class-validator';
 
 export class CreateTransactionDto {
-  @IsNumber()
-  cuenta_id: number;
+  @IsInt()
+  cuentaId: number;
 
   @IsString()
-  @IsNotEmpty()
-  tipo: string;  // ingreso / egreso
+  tipo: string; // INGRESO | EGRESO
 
   @IsNumber()
   monto: number;
 
-  @IsDateString()
-  @IsOptional()
-  fecha?: string;
-
   @IsString()
-  @IsOptional()
-  description?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  registrado_por: string;
+  registradoPor: string;
 }

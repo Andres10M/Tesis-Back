@@ -1,34 +1,34 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { CuentaService } from './cuenta.service';
-import { CreateCuentaDto } from './dto/create-cuenta.dto';
-import { UpdateCuentaDto } from './dto/update-cuenta.dto';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { CuentasService } from './cuenta.service';
 
-@Controller('cuenta')
-export class CuentaController {
-  constructor(private readonly cuentaService: CuentaService) {}
+@Controller('cuentas')
+export class CuentasController {
+  constructor(private readonly cuentasService: CuentasService) {}
 
-  @Post()
-  create(@Body() dto: CreateCuentaDto) {
-    return this.cuentaService.create(dto);
+  // Importar Excel
+  @Post('import-excel')
+  @UseInterceptors(FileInterceptor('file'))
+  async importExcel(@UploadedFile() file: Express.Multer.File) {
+    return this.cuentasService.processExcel(file);
   }
 
+  // Listar todas las cuentas
   @Get()
-  findAll() {
-    return this.cuentaService.findAll();
+  async findAll() {
+    return this.cuentasService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.cuentaService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateCuentaDto) {
-    return this.cuentaService.update(+id, dto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.cuentaService.remove(+id);
+  // Buscar por NUI (cédula exacta)
+  @Get(':nui')
+  async findByNui(@Param('nui') nui: string) {
+    return this.cuentasService.findByNui(nui);
   }
 }

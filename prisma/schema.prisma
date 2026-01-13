@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//
+// ============================
+// USUARIOS Y PERSONAS
+// ============================
+//
+
 model User {
   id       Int     @id @default(autoincrement())
   username String  @unique
@@ -17,33 +20,36 @@ model User {
   enabled  Boolean @default(true)
   locked   Boolean @default(false)
 
-  person_id String? @unique
-  person    Person? @relation(fields: [person_id], references: [nui])
+  personId String? @unique
+  person   Person? @relation(fields: [personId], references: [nui])
 
   @@map("users")
 }
 
 model Person {
-  nui       String  @id
-  firstname String
-  lastname  String
-  address   String?
-  phone     String?
-  status    Boolean @default(true)
-  is_delete Boolean @default(false)
+  nui        String  @id
+  firstname  String
+  lastname   String
+  address    String?
+  phone      String?
+  status     Boolean @default(true)
+  categoryId Int?
+  isDelete   Boolean @default(false)
+  orderIndex Int     @default(0)
 
-  uep_id   Int?
-  category Category? @relation(fields: [uep_id], references: [id])
+  accounts             Cuenta[]
+  credits              Credit[]
+  pagosMulta           PagoMulta[]
+  attendances          Attendance[]
+  creditosEspeciales   CreditoEspecial[]
+  user                 User?
 
-  accounts    Cuenta[]
-  credits     Credit[]
-  attendances Attendance[] // ← CORRECCIÓN NECESARIA
-  user        User?
+  category Category? @relation(fields: [categoryId], references: [id])
 }
 
 model Category {
   id        Int      @id @default(autoincrement())
-  name      String
+  name      String   @unique
   sector    String?
   location  String?
   createdAt DateTime @default(now())
@@ -51,106 +57,224 @@ model Category {
   persons Person[]
 }
 
+//
+// ============================
+// CUENTAS
+// ============================
+//
+
 model Cuenta {
   id          Int      @id @default(autoincrement())
   description String?
-  created_at  DateTime @default(now())
   balance     Decimal  @default(0)
-  person_id   String
-  estatus     Boolean  @default(true)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  personId    String
 
-  person  Person         @relation(fields: [person_id], references: [nui])
-  aportes Aporte[]
-  credits Credit[]
-  trans   Transactions[]
-  amort   Amortization[]
+  person Person @relation(fields: [personId], references: [nui])
+
+  finanzas        FinanzasCuenta?
+  creditosMes     CreditoMensual[]
+  aportes         Aporte[]
+  transactions    Transaction[]
+  credits         Credit[]
+  amortizations   Amortization[]
 }
+
+//
+// ============================
+// FINANZAS BASE (RESUMEN)
+// ============================
+//
+
+model FinanzasCuenta {
+  id                Int      @id @default(autoincrement())
+  cuentaId          Int      @unique
+  capitalDic2024    Decimal  @default(0)
+  aporteMensual2025 Decimal  @default(0)
+  capitalJunio2025  Decimal  @default(0)
+  createdAt         DateTime @default(now())
+
+  cuenta Cuenta @relation(fields: [cuentaId], references: [id])
+}
+
+//
+// ============================
+// 💥 CRÉDITOS MENSUALES (EXCEL POR MES)
+// ============================
+//
+
+model CreditoMensual {
+  id        Int     @id @default(autoincrement())
+  cuentaId Int
+  anio     Int
+  mes      Int
+  monto    Decimal @db.Decimal(10,2)
+
+  cuenta Cuenta @relation(fields: [cuentaId], references: [id])
+
+  @@unique([cuentaId, anio, mes])
+  @@map("credito_mensual")
+}
+
+//
+// ============================
+// APORTES
+// ============================
+//
 
 model Aporte {
-  id        Int      @id @default(autoincrement())
-  amount    Decimal  @default(2.00)   // siempre $2
-  date      DateTime @default(now())
-  mes       Int
-  anio      Int
-  cuenta_id Int
+  id       Int      @id @default(autoincrement())
+  amount   Decimal  @default(2.00)
+  date     DateTime @default(now())
+  anio     Int
+  mes      Int
+  cuentaId Int
 
-  cuenta Cuenta @relation(fields: [cuenta_id], references: [id])
+  cuenta Cuenta @relation(fields: [cuentaId], references: [id])
 
-  @@unique([cuenta_id, mes, anio]) // Impide 2 aportes en el mismo mes
+  @@unique([cuentaId, mes, anio])
 }
+
+//
+// ============================
+// TRANSACCIONES
+// ============================
+//
+
+model Transaction {
+  id            Int      @id @default(autoincrement())
+  tipo          String
+  monto         Decimal
+  fecha         DateTime @default(now())
+  description   String?
+  cuentaId      Int
+  registradoPor String
+  saldoActual   Decimal
+
+  cuenta Cuenta @relation(fields: [cuentaId], references: [id])
+}
+
+//
+// ============================
+// CRÉDITOS NORMALES
+// ============================
+//
 
 model Credit {
-  id           Int       @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   amount       Decimal
   interestRate Decimal
-  start_date   DateTime
-  end_date     DateTime?
   status       String
-  person_id    String
-  cuenta_id    Int?
+  cuentaId     Int?
+  personId     String
+  startDate    DateTime
+  endDate      DateTime?
 
-  person Person  @relation(fields: [person_id], references: [nui])
-  cuenta Cuenta? @relation(fields: [cuenta_id], references: [id])
+  cuenta Cuenta? @relation(fields: [cuentaId], references: [id])
+  person Person  @relation(fields: [personId], references: [nui])
 
-  amort Amortization[]
-}
-
-model Fines {
-  id_multa    Int      @id @default(autoincrement())
-  id_socio    Int
-  id_reunion  Int
-  motivo      String
-  monto       Decimal
-  fecha_multa DateTime
-  estado_pago String
-  observacion String?
-}
-
-model Transactions {
-  id             Int      @id @default(autoincrement())
-  cuenta_id      Int
-  tipo           String
-  monto          Decimal
-  fecha          DateTime @default(now())
-  description    String?
-  registrado_por String
-  saldo_actual   Decimal
-
-  cuenta Cuenta @relation(fields: [cuenta_id], references: [id])
+  amortizations Amortization[]
 }
 
 model Amortization {
-  id            Int      @id @default(autoincrement())
-  monto_interes Decimal
-  fecha_calculo DateTime
-  credito_id    Int
-  cuenta_id     Int
+  id           Int      @id @default(autoincrement())
+  creditId     Int
+  cuentaId     Int
+  fechaCalculo DateTime
+  montoInteres Decimal
 
-  credit Credit @relation(fields: [credito_id], references: [id])
-  cuenta Cuenta @relation(fields: [cuenta_id], references: [id])
+  credit Credit @relation(fields: [creditId], references: [id])
+  cuenta Cuenta @relation(fields: [cuentaId], references: [id])
+}
+
+//
+// ============================
+// CRÉDITOS ESPECIALES
+// ============================
+//
+
+model CreditoEspecial {
+  id            Int      @id @default(autoincrement())
+  socioId       String
+  montoPrestado Decimal  @db.Decimal(10,2)
+  interes       Decimal  @db.Decimal(10,2)
+  totalPagar    Decimal  @db.Decimal(10,2)
+  anio          Int
+  mes           Int
+  fechaCredito  DateTime
+  estado        EstadoCreditoEspecial @default(PENDIENTE)
+
+  socio  Person @relation(fields: [socioId], references: [nui])
+  abonos AbonoCreditoEspecial[]
+
+  createdAt DateTime @default(now())
+
+  @@map("credito_especial")
+}
+
+model AbonoCreditoEspecial {
+  id                Int      @id @default(autoincrement())
+  creditoEspecialId Int
+  monto             Decimal  @db.Decimal(10,2)
+  fecha             DateTime @default(now())
+  registradoPor     String?
+
+  creditoEspecial CreditoEspecial @relation(fields: [creditoEspecialId], references: [id])
+
+  @@map("abono_credito_especial")
+}
+
+enum EstadoCreditoEspecial {
+  PENDIENTE
+  PAGADO
+}
+
+//
+// ============================
+// ASISTENCIAS Y MULTAS
+// ============================
+//
+
+model Meeting {
+  id          Int      @id @default(autoincrement())
+  fecha       DateTime
+  descripcion String?
+  createdAt   DateTime @default(now())
+  isClosed    Boolean  @default(false)
+
+  attendances Attendance[]
 }
 
 model Attendance {
-  id          Int      @id @default(autoincrement())
-  fecha       DateTime @default(now())
-  socioId     String
-  estado      String     // ASISTIO | TARDE | FALTA
+  id          Int              @id @default(autoincrement())
+  fecha       DateTime         @default(now())
+  multa       Decimal          @default(0)
   observacion String?
-  justificado Boolean    @default(false)   // 🔥 NUEVO
-  multa       Decimal    @default(0)
-  reunionId   Int
+  justificado Boolean          @default(false)
+  socioId     String
+  estado      EstadoAsistencia
+  meetingId   Int
 
+  meeting Meeting @relation(fields: [meetingId], references: [id])
   person  Person  @relation(fields: [socioId], references: [nui])
-  meeting Meeting @relation(fields: [reunionId], references: [id])
 
+  @@unique([socioId, meetingId])
   @@map("attendance")
 }
 
+model PagoMulta {
+  id            Int      @id @default(autoincrement())
+  socioId       String
+  monto         Decimal
+  fecha         DateTime @default(now())
+  registradoPor String?
 
-model Meeting {
-  id          Int          @id @default(autoincrement())
-  fecha       DateTime
-  descripcion String?
-  createdAt   DateTime     @default(now())
-  attendances Attendance[]
+  socio Person @relation(fields: [socioId], references: [nui])
+}
+
+enum EstadoAsistencia {
+  ASISTIO
+  TARDE
+  FALTA
 }

@@ -1,11 +1,15 @@
-import { IsBoolean, IsInt, IsOptional, IsString, IsNumber } from 'class-validator';
+import { EstadoAsistencia } from '@prisma/client';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateAttendanceDto {
   @IsString()
   socioId: string;
 
-  @IsString()
-  estado: string; // ASISTIO | TARDE | FALTA
+  @IsInt()
+  meetingId: number;
+
+  @IsEnum(EstadoAsistencia)
+  estado: EstadoAsistencia;
 
   @IsOptional()
   @IsString()
@@ -14,11 +18,4 @@ export class CreateAttendanceDto {
   @IsOptional()
   @IsBoolean()
   justificado?: boolean;
-
-  @IsOptional()
-  @IsNumber()
-  multa?: number;
-
-  @IsInt()
-  reunionId: number;
 }

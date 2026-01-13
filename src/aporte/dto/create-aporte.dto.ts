@@ -1,6 +1,12 @@
+import { IsInt } from 'class-validator';
+
 export class CreateAporteDto {
-  cuenta_id: number;
+  @IsInt()
+  cuentaId: number;
+
+  @IsInt()
   mes: number;
+
+  @IsInt()
   anio: number;
-  observacion?: string;
 }

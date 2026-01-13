@@ -1,30 +1,39 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Param,
+  Body,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
-import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 
 @Controller('attendance')
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(private readonly service: AttendanceService) {}
 
-  @Post()
-  create(@Body() dto: CreateAttendanceDto) {
-    return this.attendanceService.create(dto);
+  @Get('meeting/:id')
+  findByMeeting(@Param('id', ParseIntPipe) id: number) {
+    return this.service.findByMeeting(id);
   }
 
-  @Get()
-  findAll() {
-    return this.attendanceService.findAll();
+  @Get('meeting/:id/resumen')
+  getResumen(@Param('id', ParseIntPipe) id: number) {
+    return this.service.getResumen(id);
   }
 
-  // 👉 PATCH /attendance/:id
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: any) {
-    return this.attendanceService.update(Number(id), dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateAttendanceDto,
+  ) {
+    return this.service.update(id, dto);
   }
 
-  // 👉 DELETE /attendance/:id
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.attendanceService.remove(Number(id));
+  @Post('meeting/:id/close')
+  close(@Param('id', ParseIntPipe) id: number) {
+    return this.service.closeMeeting(id);
   }
 }

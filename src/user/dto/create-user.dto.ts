@@ -1,23 +1,21 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
-  @IsNotEmpty()
   username: string;
 
   @IsString()
-  @IsNotEmpty()
   password: string;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   enabled?: boolean;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   locked?: boolean;
 
-  @IsString()
   @IsOptional()
-  person_id?: string; // <-- CORREGIDO
+  @IsString()
+  personId?: string;
 }

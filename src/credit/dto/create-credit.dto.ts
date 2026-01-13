@@ -1,29 +1,25 @@
-import { IsNotEmpty, IsNumberString, IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsNumber, IsString, IsDateString, IsOptional } from 'class-validator';
 
 export class CreateCreditDto {
-  @IsNotEmpty()
-  @IsNumberString()
-  amount: string;
+  @IsNumber()
+  amount: number;
 
-  @IsNotEmpty()
-  @IsNumberString()
-  interestRate: string;
+  @IsNumber()
+  interestRate: number;
 
   @IsDateString()
-  start_date: string;
+  startDate: string;
 
   @IsOptional()
   @IsDateString()
-  end_date?: string;
+  endDate?: string;
 
   @IsString()
-  @IsNotEmpty()
   status: string;
 
   @IsString()
-  @IsNotEmpty()
-  person_id: string;
+  personId: string;
 
   @IsOptional()
-  cuenta_id?: number;
+  cuentaId?: number;
 }

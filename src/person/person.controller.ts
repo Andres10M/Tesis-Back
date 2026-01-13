@@ -1,34 +1,37 @@
-import { Controller, Post, Body, Get, Param, Patch, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+} from '@nestjs/common';
 import { PersonService } from './person.service';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
 
 @Controller('person')
 export class PersonController {
-  constructor(private readonly personService: PersonService) {}
-
-  @Post()
-  create(@Body() dto: CreatePersonDto) {
-    return this.personService.create(dto);
-  }
+  constructor(private readonly service: PersonService) {}
 
   @Get()
   findAll() {
-    return this.personService.findAll();
+    return this.service.findAll();
   }
 
-  @Get(':nui')
-  findOne(@Param('nui') nui: string) {
-    return this.personService.findOne(nui);
+  @Post()
+  create(@Body() dto: CreatePersonDto) {
+    return this.service.create(dto);
   }
 
   @Patch(':nui')
   update(@Param('nui') nui: string, @Body() dto: UpdatePersonDto) {
-    return this.personService.update(nui, dto);
+    return this.service.updateSafe(nui, dto);
   }
 
   @Delete(':nui')
   remove(@Param('nui') nui: string) {
-    return this.personService.remove(nui);
+    return this.service.remove(nui);
   }
 }

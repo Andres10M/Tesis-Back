@@ -2,45 +2,42 @@ import {
   Controller,
   Post,
   Get,
-  Patch,
+  Put,
   Delete,
   Param,
   Body,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { MeetingService } from './meeting.service';
-import { CreateMeetingDto } from './dto/create-meeting.dto';
-import { UpdateMeetingDto } from './dto/update-meeting.dto';
 
 @Controller('meetings')
 export class MeetingController {
-  constructor(private readonly meetingService: MeetingService) {}
+  constructor(private readonly service: MeetingService) {}
 
   @Post()
-  create(@Body() dto: CreateMeetingDto) {
-    return this.meetingService.create(dto);
+  create(@Body('fecha') fecha: string) {
+    return this.service.create(fecha);
   }
 
   @Get()
   findAll() {
-    return this.meetingService.findAll();
+    return this.service.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.meetingService.findOne(id);
+  findOne(@Param('id') id: string) {
+    return this.service.findOne(+id);
   }
 
-  @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateMeetingDto,
+  @Put(':id/orden')
+  updateOrden(
+    @Param('id') id: string,
+    @Body('orden') orden: string,
   ) {
-    return this.meetingService.update(id, dto);
+    return this.service.updateOrdenDia(+id, orden);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.meetingService.remove(id);
+  remove(@Param('id') id: string) {
+    return this.service.remove(+id);
   }
 }

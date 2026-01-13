@@ -1,94 +1,69 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateCreditDto } from './dto/create-credit.dto';
-import { UpdateCreditDto } from './dto/update-credit.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class CreditService {
   constructor(private prisma: PrismaService) {}
 
-  create(dto: CreateCreditDto) {
-    return this.prisma.credit.create({
-      data: {
-        amount: dto.amount,
-        interestRate: dto.interestRate,
-        start_date: new Date(dto.start_date),
-        end_date: dto.end_date ? new Date(dto.end_date) : null,
-        status: dto.status,
-        person_id: dto.person_id,
-        cuenta_id: dto.cuenta_id ?? null,
-      },
-    });
-  }
+  async createCredit(data: {
+    cuentaId: number;
+    personId: string;
+    amount: number;
+    interestRate: number;
+    startDate: Date;
+    endDate?: Date;
+    registradoPor: string;
+  }) {
+    return this.prisma.$transaction(async (tx) => {
+      // 1️⃣ Buscar cuenta
+      const cuenta = await tx.cuenta.findUnique({
+        where: { id: data.cuentaId },
+      });
 
-  findAll() {
-    return this.prisma.credit.findMany({
-      include: {
-        person: true,
-        cuenta: true,
-        amort: true,
-      },
-    });
-  }
+      // 🚨 VALIDACIÓN CLAVE
+      if (!cuenta) {
+        throw new NotFoundException('La cuenta no existe');
+      }
 
-  async findOne(id: number) {
-    const credit = await this.prisma.credit.findUnique({
-      where: { id },
-      include: {
-        person: true,
-        cuenta: true,
-        amort: true,
-      },
-    });
-
-    if (!credit) throw new NotFoundException('Crédito no encontrado');
-    return credit;
-  }
-
-  async update(id: number, dto: UpdateCreditDto) {
-    await this.findOne(id);
-
-    return this.prisma.credit.update({
-      where: { id },
-      data: {
-        amount: dto.amount,
-        interestRate: dto.interestRate,
-        start_date: dto.start_date ? new Date(dto.start_date) : undefined,
-        end_date: dto.end_date ? new Date(dto.end_date) : undefined,
-        status: dto.status,
-        person_id: dto.person_id,
-        cuenta_id: dto.cuenta_id,
-      },
-    });
-  }
-
-  async remove(id: number) {
-    await this.findOne(id);
-    return this.prisma.credit.delete({
-      where: { id },
-    });
-  }
-
-  // Nuevo método para créditos especiales
-  async findSpecialCredits() {
-    const credits = await this.prisma.credit.findMany({
-      where: {
-        status: 'aprobado', // filtro ejemplo, cambia según tu lógica
-        amount: {
-          gt: 200,          // ejemplo: monto mayor a 200
+      // 2️⃣ Crear crédito
+      const credit = await tx.credit.create({
+        data: {
+          cuentaId: cuenta.id,
+          personId: data.personId,
+          amount: new Decimal(data.amount),
+          interestRate: new Decimal(data.interestRate),
+          startDate: data.startDate,
+          endDate: data.endDate,
+          status: 'ACTIVO',
         },
-      },
-      include: {
-        person: true,
-      },
-    });
+      });
 
-    return credits.map(c => ({
-      id: c.id,
-      fullname: `${c.person.firstname} ${c.person.lastname}`,
-      amount: Number(c.amount),
-      interestRate: Number(c.interestRate),
-      totalToPay: Number(c.amount) + Number(c.interestRate), // suma directa, cambia si necesitas calcular % de interés
-    }));
+      // 3️⃣ Calcular nuevo saldo
+      const nuevoSaldo =
+        cuenta.balance.toNumber() + data.amount;
+
+      // 4️⃣ Actualizar balance
+      await tx.cuenta.update({
+        where: { id: cuenta.id },
+        data: {
+          balance: new Decimal(nuevoSaldo),
+        },
+      });
+
+      // 5️⃣ Registrar transacción
+      await tx.transaction.create({
+        data: {
+          cuentaId: cuenta.id,
+          tipo: 'CREDITO',
+          monto: new Decimal(data.amount),
+          registradoPor: data.registradoPor,
+          saldoActual: new Decimal(nuevoSaldo),
+          description: 'Crédito otorgado',
+        },
+      });
+
+      return credit;
+    });
   }
 }

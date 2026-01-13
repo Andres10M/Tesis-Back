@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { CuentaService } from './cuenta.service';
-import { CuentaController } from './cuenta.controller';
+import { CuentasService } from './cuenta.service';
+import { CuentasController } from './cuenta.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Module({
-  controllers: [CuentaController],
-  providers: [CuentaService, PrismaService],
+  controllers: [CuentasController],
+  providers: [CuentasService, PrismaService],
 })
 export class CuentaModule {}

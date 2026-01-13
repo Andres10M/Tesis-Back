@@ -7,32 +7,19 @@ export class AporteService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateAporteDto) {
-    const { cuenta_id, mes, anio } = dto;
-
-    // Verificar que no exista aporte duplicado
-    const existing = await this.prisma.aporte.findFirst({
-      where: { cuenta_id, mes, anio }
-    });
-
-    if (existing) {
-      throw new BadRequestException('El aporte de este mes ya está registrado');
-    }
-
-    return await this.prisma.aporte.create({
+    return this.prisma.aporte.create({
       data: {
-        cuenta_id,
-        mes,
-        anio,
-        amount: 2, // siempre $2
-      }
+        cuentaId: dto.cuentaId,
+        mes: dto.mes,
+        anio: dto.anio,
+        amount: 2,
+      },
     });
   }
 
-  async findAll() {
-    return await this.prisma.aporte.findMany({
-      include: {
-        cuenta: true
-      }
+  findAll() {
+    return this.prisma.aporte.findMany({
+      include: { cuenta: true },
     });
   }
 }

@@ -1,4 +1,6 @@
-// src/meeting/dto/create-meeting.dto.ts
+import { IsDateString } from 'class-validator';
+
 export class CreateMeetingDto {
-  descripcion?: string;
+  @IsDateString()
+  fecha: string;
 }
