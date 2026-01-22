@@ -33,6 +33,8 @@ import { MultasModule } from './multas/multas.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { PagoMultaModule } from './pago-multa/pago-multa.module';
+import { CreditosEspecialesModule } from './creditos-especiales/creditos-especiales.module';
+import { CuotasModule } from './cuotas/cuotas.module';
 
 @Module({
   imports: [
@@ -58,6 +60,8 @@ import { PagoMultaModule } from './pago-multa/pago-multa.module';
     AttendanceModule,
     MeetingModule,
     PagoMultaModule,
+    CreditosEspecialesModule,
+    CuotasModule,
   ],
   controllers: [],
   providers: [],

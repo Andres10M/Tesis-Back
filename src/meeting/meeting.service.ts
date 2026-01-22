@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EstadoAsistencia } from '@prisma/client'; // Enum de estado asistencia
+import { EstadoAsistencia } from '@prisma/client';
+import { CuotasService } from '../cuotas/cuotas.service'; // 👈 NUEVO
 
 @Injectable()
 export class MeetingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cuotasService: CuotasService, // 👈 NUEVO
+  ) {}
 
   // Crear reunión y generar asistencias para todos los socios activos
   async create(fecha: string) {
@@ -18,6 +22,9 @@ export class MeetingService {
         descripcion: '',
       },
     });
+
+    // 👇 NUEVO: crear cuotas automáticas
+    await this.cuotasService.crearCuotasPorReunion(meeting.id);
 
     // Obtener socios activos ordenados por orderIndex
     const socios = await this.prisma.person.findMany({
@@ -45,14 +52,12 @@ export class MeetingService {
     return meeting;
   }
 
-  // Listar reuniones ordenadas por fecha descendente
   async findAll() {
     return this.prisma.meeting.findMany({
       orderBy: { fecha: 'desc' },
     });
   }
 
-  // Obtener reunión por id con orden del día
   async findOne(id: number) {
     const meeting = await this.prisma.meeting.findUnique({
       where: { id },
@@ -62,7 +67,6 @@ export class MeetingService {
     return meeting;
   }
 
-  // Actualizar orden del día
   async updateOrdenDia(id: number, orden: string) {
     const meeting = await this.prisma.meeting.findUnique({ where: { id } });
     if (!meeting) throw new NotFoundException('Reunión no encontrada');
@@ -77,17 +81,17 @@ export class MeetingService {
     return updated;
   }
 
-  // Eliminar reunión junto con sus asistencias relacionadas
   async remove(id: number) {
     const meeting = await this.prisma.meeting.findUnique({ where: { id } });
     if (!meeting) throw new NotFoundException('Reunión no encontrada');
 
-    // Primero elimina todas las asistencias de esta reunión
     await this.prisma.attendance.deleteMany({
       where: { meetingId: id },
     });
 
-    // Luego elimina la reunión
+    // 👇 NO TOCAMOS NADA AQUÍ
+    // Prisma se encarga de borrar cuotas por Cascade
+
     await this.prisma.meeting.delete({ where: { id } });
 
     console.log('🗑️ REUNIÓN ELIMINADA:', meeting.fecha);

@@ -1,62 +1,85 @@
-import { PrismaClient } from '@prisma/client'
-import * as XLSX from 'xlsx'
-import path from 'path'
+import { PrismaClient } from '@prisma/client';
+import * as XLSX from 'xlsx';
+import path from 'path';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
-const fileName = 'creditos_2024_12.xlsx'
+/* =========================
+   UTILIDADES
+========================= */
 
-// 👉 lo sacas del nombre del archivo
-const anio = 2024
-const mes = 12
-
-function parseNumber(v: any): number {
-  if (!v) return 0
-  return Number(String(v).replace(',', '.'))
+function normalizeNui(value: any): string | null {
+  if (!value) return null;
+  const nui = String(value).replace(/\D/g, '');
+  return nui.length === 10 ? nui : null;
 }
 
-async function main() {
-  const filePath = path.join(__dirname, fileName)
-  const workbook = XLSX.readFile(filePath)
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+function parseDecimal(value: any): number {
+  if (value === null || value === undefined || value === '') return 0;
+  return Number(String(value).replace(',', '.'));
+}
 
-  const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: null })
+/* =========================
+   MAIN
+========================= */
+
+async function main() {
+  const filePath = path.join(__dirname, 'creditos_2024_12.xlsx');
+
+  const workbook = XLSX.readFile(filePath);
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+  const rows: any[] = XLSX.utils.sheet_to_json(sheet, {
+    defval: null,
+    raw: false,
+  });
+
+  console.log('📄 Filas encontradas:', rows.length);
+
+  let insertados = 0;
 
   for (const row of rows) {
-    const nui = String(row.nui).trim()
+    const nui = normalizeNui(row.nui);
+    if (!nui) continue;
 
-    if (!/^\d{10}$/.test(nui)) continue
-
-    // aseguramos que el socio exista
-    const person = await prisma.person.findUnique({
+    // verificar que el socio exista
+    const socio = await prisma.person.findUnique({
       where: { nui },
-    })
-    if (!person) continue
+    });
 
-    // evitar subir dos veces el mismo mes
-    const exists = await prisma.creditoEspecial.findFirst({
-      where: { socioId: nui, anio, mes },
-    })
-    if (exists) continue
+    if (!socio) {
+      console.log(`⚠️ Socio no existe: ${nui}`);
+      continue;
+    }
+
+    const montoPrestado = parseDecimal(row.monto_prestado);
+    const interes = parseDecimal(row.interes);
+    const totalPagar = parseDecimal(row.total_pagar);
+    const fechaCredito = new Date(row.fecha_credito);
+
+    const anio = fechaCredito.getFullYear();
+    const mes = fechaCredito.getMonth() + 1;
 
     await prisma.creditoEspecial.create({
       data: {
         socioId: nui,
-        montoPrestado: parseNumber(row.monto_prestado),
-        interes: parseNumber(row.interes),
-        totalPagar: parseNumber(row.total_pagar),
-        fechaCredito: new Date(row.fecha_credito),
+        montoPrestado,
+        interes,
+        totalPagar,
+        fechaCredito,
         anio,
         mes,
       },
-    })
+    });
 
-    console.log(`✅ Crédito cargado: ${nui}`)
+    insertados++;
   }
 
-  console.log('🎉 Excel cargado sin romper nada')
+  console.log('==============================');
+  console.log('✅ Créditos especiales cargados:', insertados);
+  console.log('==============================');
 }
 
 main()
   .catch(console.error)
-  .finally(() => prisma.$disconnect())
+  .finally(() => prisma.$disconnect());

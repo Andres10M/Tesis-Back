@@ -37,14 +37,20 @@ model Person {
   isDelete   Boolean @default(false)
   orderIndex Int     @default(0)
 
-  accounts             Cuenta[]
-  credits              Credit[]
-  pagosMulta           PagoMulta[]
-  attendances          Attendance[]
-  creditosEspeciales   CreditoEspecial[]
-  user                 User?
+  accounts           Cuenta[]
+  credits            Credit[]
+  pagosMulta         PagoMulta[]
+  attendances        Attendance[]
+  creditosEspeciales CreditoEspecial[]
+  user               User?
 
   category Category? @relation(fields: [categoryId], references: [id])
+
+  fechaIngreso  DateTime?
+  esSocioActivo Boolean  @default(false)
+  limiteCredito Decimal? @default(2000)
+
+  cuotas CuotaSocio[]
 }
 
 model Category {
@@ -73,19 +79,13 @@ model Cuenta {
 
   person Person @relation(fields: [personId], references: [nui])
 
-  finanzas        FinanzasCuenta?
-  creditosMes     CreditoMensual[]
-  aportes         Aporte[]
-  transactions    Transaction[]
-  credits         Credit[]
-  amortizations   Amortization[]
+  finanzas      FinanzasCuenta?
+  creditosMes   CreditoMensual[]
+  aportes       Aporte[]
+  transactions  Transaction[]
+  credits       Credit[]
+  amortizations Amortization[]
 }
-
-//
-// ============================
-// FINANZAS BASE (RESUMEN)
-// ============================
-//
 
 model FinanzasCuenta {
   id                Int      @id @default(autoincrement())
@@ -100,7 +100,7 @@ model FinanzasCuenta {
 
 //
 // ============================
-// 💥 CRÉDITOS MENSUALES (EXCEL POR MES)
+// CRÉDITOS MENSUALES
 // ============================
 //
 
@@ -119,7 +119,7 @@ model CreditoMensual {
 
 //
 // ============================
-// APORTES
+// APORTES ($2)
 // ============================
 //
 
@@ -232,7 +232,37 @@ enum EstadoCreditoEspecial {
 
 //
 // ============================
-// ASISTENCIAS Y MULTAS
+// CUOTAS (INGRESO / 20 / 2)
+// ============================
+//
+
+model CuotaSocio {
+  id            Int      @id @default(autoincrement())
+  socioId       String
+  meetingId     Int?
+  tipo          TipoCuota
+  monto         Decimal  @db.Decimal(10,2)
+  pagado        Boolean  @default(false)
+  fechaPago     DateTime?
+  registradoPor String?
+  createdAt     DateTime @default(now())
+
+  socio   Person   @relation(fields: [socioId], references: [nui])
+  meeting Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@unique([socioId, meetingId, tipo])
+}
+
+
+enum TipoCuota {
+  INGRESO
+  CUOTA_20
+  APORTE_2
+}
+
+//
+// ============================
+// REUNIONES / ASISTENCIAS
 // ============================
 //
 
@@ -244,6 +274,7 @@ model Meeting {
   isClosed    Boolean  @default(false)
 
   attendances Attendance[]
+  cuotas      CuotaSocio[]
 }
 
 model Attendance {
