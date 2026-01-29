@@ -5,52 +5,61 @@ import { PrismaService } from '../prisma/prisma.service';
 export class CreditosEspecialesService {
   constructor(private prisma: PrismaService) {}
 
+  async crearHojaVacia(meetingId: number, fecha: Date) {
+    const socios = await this.prisma.person.findMany({
+      where: { status: true, isDelete: false },
+      orderBy: { orderIndex: 'asc' },
+    });
+
+    const anio = fecha.getFullYear();
+    const mes = fecha.getMonth() + 1;
+
+    const filas = socios.map((s) => ({
+      socioId: s.nui,
+      montoPrestado: 0,
+      interes: 0,
+      totalPagar: 0,
+      fechaCredito: fecha,
+      anio,
+      mes,
+      meetingId,
+    }));
+
+    await this.prisma.creditoEspecial.createMany({
+      data: filas,
+      skipDuplicates: true,
+    });
+
+    console.log('📄 HOJA CRÉDITOS CREADA:', meetingId);
+    return true;
+  }
+
+  async actualizarFila(id: number, monto: number) {
+    const interes = +(monto * 0.02).toFixed(2);
+    const total = +(monto + interes).toFixed(2);
+
+    return this.prisma.creditoEspecial.update({
+      where: { id },
+      data: {
+        montoPrestado: monto,
+        interes,
+        totalPagar: total,
+      },
+    });
+  }
+
+  async findByMeeting(meetingId: number) {
+    return this.prisma.creditoEspecial.findMany({
+      where: { meetingId },
+      include: { socio: true },
+      orderBy: { socio: { orderIndex: 'asc' } },
+    });
+  }
+
   async findAll() {
     return this.prisma.creditoEspecial.findMany({
-      include: {
-        socio: {
-          select: {
-            nui: true,
-            firstname: true,
-            lastname: true,
-          },
-        },
-        abonos: true,
-      },
-      orderBy: [
-        { anio: 'desc' },
-        { mes: 'desc' },
-      ],
-    });
-  }
-
-  async findByNui(nui: string) {
-    return this.prisma.creditoEspecial.findMany({
-      where: {
-        socioId: nui,
-      },
-      include: {
-        socio: {
-          select: {
-            firstname: true,
-            lastname: true,
-          },
-        },
-        abonos: true,
-      },
-      orderBy: {
-        fechaCredito: 'desc',
-      },
-    });
-  }
-
-  async findByPeriodo(anio: number, mes: number) {
-    return this.prisma.creditoEspecial.findMany({
-      where: { anio, mes },
-      include: {
-        socio: true,
-        abonos: true,
-      },
+      include: { socio: true },
+      orderBy: { fechaCredito: 'desc' },
     });
   }
 }

@@ -10,7 +10,7 @@ export class PersonService {
   findAll() {
     return this.prisma.person.findMany({
       where: { isDelete: false },
-      orderBy: { orderIndex: 'asc' }, // ordenar por orderIndex
+      orderBy: { orderIndex: 'asc' },
     });
   }
 
@@ -23,7 +23,14 @@ export class PersonService {
       throw new BadRequestException('La cédula ya existe');
     }
 
-    const created = await this.prisma.person.create({ data: dto });
+    // Por defecto status false si no viene
+    const created = await this.prisma.person.create({
+      data: {
+        ...dto,
+        status: dto.status ?? false,
+        isDelete: false,
+      },
+    });
     console.log(`✅ Socio creado: ${created.firstname} ${created.lastname} (${created.nui})`);
     return created;
   }
@@ -37,7 +44,6 @@ export class PersonService {
       throw new BadRequestException('Socio no encontrado');
     }
 
-    // SIN CAMBIO DE CÉDULA
     if (!dto.nui || dto.nui === oldNui) {
       const updated = await this.prisma.person.update({
         where: { nui: oldNui },
@@ -54,7 +60,6 @@ export class PersonService {
       return updated;
     }
 
-    // CAMBIO DE CÉDULA (TRANSACCIÓN SEGURA)
     return this.prisma.$transaction(async tx => {
       const exists = await tx.person.findUnique({
         where: { nui: dto.nui! },
@@ -73,7 +78,8 @@ export class PersonService {
           phone: person.phone,
           status: person.status,
           categoryId: person.categoryId,
-          orderIndex: person.orderIndex, // conservar posición
+          orderIndex: person.orderIndex,
+          isDelete: false,
         },
       });
 

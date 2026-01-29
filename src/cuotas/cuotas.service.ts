@@ -1,5 +1,8 @@
-
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TipoCuota } from '@prisma/client';
 
@@ -7,9 +10,7 @@ import { TipoCuota } from '@prisma/client';
 export class CuotasService {
   constructor(private prisma: PrismaService) {}
 
-  // =====================================================
-  // 🔥 CREAR CUOTAS AUTOMÁTICAS AL CREAR REUNIÓN
-  // =====================================================
+  // Crear cuotas automáticas al crear reunión
   async crearCuotasPorReunion(meetingId: number) {
     const socios = await this.prisma.person.findMany({
       where: {
@@ -46,21 +47,73 @@ export class CuotasService {
     console.log('💰 CUOTAS AUTOMÁTICAS CREADAS', meetingId);
   }
 
-  // =====================================================
-  // ✅ GUARDAR CUOTAS MASIVAS (FIX DEFINITIVO)
-  // =====================================================
+  // Pagar cuota de ingreso y activar socio
+  async pagarCuotaIngreso(
+    nui: string,
+    monto = 275,  // Cambiado a 275 directamente
+    usuario = 'sistema',
+  ) {
+    const socio = await this.prisma.person.findUnique({
+      where: { nui },
+    });
+
+    if (!socio) {
+      throw new NotFoundException('Socio no encontrado');
+    }
+
+    if (socio.status) {
+      throw new BadRequestException('El socio ya está activo');
+    }
+
+    // Registrar cuota de ingreso
+    await this.prisma.cuotaSocio.create({
+      data: {
+        socioId: nui,
+        tipo: TipoCuota.INGRESO,
+        monto,
+        pagado: true,
+        fechaPago: new Date(),
+        registradoPor: usuario,
+        meetingId: null,
+      },
+    });
+
+    // Activar socio
+    await this.prisma.person.update({
+      where: { nui },
+      data: {
+        status: true,
+        isDelete: false,
+      },
+    });
+
+    console.log(`✅ Socio ${socio.firstname} ${socio.lastname} activado pagando cuota de ingreso`);
+
+    return { message: 'Socio activado correctamente' };
+  }
+
+  // Listar socios pendientes de ingreso (status = false)
+  async listarSociosPendientesIngreso() {
+    return this.prisma.person.findMany({
+      where: {
+        status: false,
+        isDelete: false,
+      },
+      orderBy: {
+        lastname: 'asc',
+      },
+    });
+  }
+
+  // Guardar cuotas masivas
   async guardarCuotaMasiva(
     meetingId: number,
     tipo: TipoCuota,
     sociosPagados: string[],
     usuario = 'sistema',
   ) {
-    // 🔥 1. RESETEAR TODAS LAS CUOTAS DE ESE TIPO
     await this.prisma.cuotaSocio.updateMany({
-      where: {
-        meetingId,
-        tipo,
-      },
+      where: { meetingId, tipo },
       data: {
         pagado: false,
         fechaPago: null,
@@ -68,7 +121,6 @@ export class CuotasService {
       },
     });
 
-    // 🔥 2. MARCAR SOLO LOS SELECCIONADOS
     if (sociosPagados.length > 0) {
       await this.prisma.cuotaSocio.updateMany({
         where: {
@@ -86,27 +138,16 @@ export class CuotasService {
 
     const monto = tipo === TipoCuota.APORTE_2 ? 2 : 20;
 
-    console.log('✅ CUOTAS GUARDADAS', {
-      meetingId,
-      tipo,
-      socios: sociosPagados.length,
-      total: sociosPagados.length * monto,
-    });
-
     return {
       sociosRegistrados: sociosPagados.length,
       totalRecaudado: sociosPagados.length * monto,
     };
   }
 
-  // =====================================================
-  // 🔍 OBTENER TODAS LAS CUOTAS DE UNA REUNIÓN
-  // =====================================================
+  // Obtener cuotas por reunión
   async obtenerCuotasPorReunion(meetingId: number) {
     return this.prisma.cuotaSocio.findMany({
-      where: {
-        meetingId,
-      },
+      where: { meetingId },
       select: {
         socioId: true,
         tipo: true,
@@ -115,29 +156,21 @@ export class CuotasService {
     });
   }
 
-  // =====================================================
-  // 🔍 LISTAR CUOTAS POR REUNIÓN Y TIPO
-  // =====================================================
+  // Listar cuotas por reunión y tipo
   async listarCuotasPorReunion(meetingId: number, tipo: TipoCuota) {
     return this.prisma.cuotaSocio.findMany({
       where: {
         meetingId,
         tipo,
       },
-      include: {
-        socio: true,
-      },
+      include: { socio: true },
       orderBy: {
-        socio: {
-          orderIndex: 'asc',
-        },
+        socio: { orderIndex: 'asc' },
       },
     });
   }
 
-  // =====================================================
-  // 🔍 CUOTAS PENDIENTES
-  // =====================================================
+  // Listar cuotas pendientes por reunión y tipo
   async listarCuotasPendientes(meetingId: number, tipo: TipoCuota) {
     return this.prisma.cuotaSocio.findMany({
       where: {
@@ -145,15 +178,11 @@ export class CuotasService {
         tipo,
         pagado: false,
       },
-      include: {
-        socio: true,
-      },
+      include: { socio: true },
     });
   }
 
-  // =====================================================
-  // 🔍 CUOTAS PAGADAS
-  // =====================================================
+  // Listar cuotas pagadas por reunión y tipo
   async listarCuotasPagadas(meetingId: number, tipo: TipoCuota) {
     return this.prisma.cuotaSocio.findMany({
       where: {
@@ -161,15 +190,11 @@ export class CuotasService {
         tipo,
         pagado: true,
       },
-      include: {
-        socio: true,
-      },
+      include: { socio: true },
     });
   }
 
-  // =====================================================
-  // 📊 RESUMEN TOTAL DE RECAUDACIÓN
-  // =====================================================
+  // Resumen total de recaudación
   async resumenRecaudacion(meetingId: number) {
     const cuotas = await this.prisma.cuotaSocio.findMany({
       where: {
@@ -178,10 +203,7 @@ export class CuotasService {
       },
     });
 
-    const total = cuotas.reduce(
-      (sum, c) => sum + c.monto.toNumber(),
-      0,
-    );
+    const total = cuotas.reduce((sum, c) => sum + c.monto.toNumber(), 0);
 
     return {
       meetingId,

@@ -205,6 +205,10 @@ model CreditoEspecial {
   fechaCredito  DateTime
   estado        EstadoCreditoEspecial @default(PENDIENTE)
 
+  // 🔽 TEMPORALMENTE OPCIONAL
+  meetingId Int?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
   socio  Person @relation(fields: [socioId], references: [nui])
   abonos AbonoCreditoEspecial[]
 
@@ -212,6 +216,7 @@ model CreditoEspecial {
 
   @@map("credito_especial")
 }
+
 
 model AbonoCreditoEspecial {
   id                Int      @id @default(autoincrement())
@@ -274,7 +279,10 @@ model Meeting {
   isClosed    Boolean  @default(false)
 
   attendances Attendance[]
-  cuotas      CuotaSocio[]
+  cuotas      CuotaSocio[] 
+
+  // 🔽 NUEVO
+  creditosEspeciales CreditoEspecial[]
 }
 
 model Attendance {

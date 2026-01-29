@@ -1,25 +1,28 @@
-import { Controller, Get, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param } from '@nestjs/common';
 import { CreditosEspecialesService } from './creditos-especiales.service';
 
 @Controller('creditos-especiales')
 export class CreditosEspecialesController {
-  constructor(private readonly service: CreditosEspecialesService) {}
+  constructor(private service: CreditosEspecialesService) {}
 
-  // 🔹 GET /creditos-especiales
-  @Get()
-  async getAll(
-    @Query('nui') nui?: string,
-    @Query('anio') anio?: string,
-    @Query('mes') mes?: string,
-  ) {
-    if (nui) {
-      return this.service.findByNui(nui);
-    }
+  // 🔹 Crear hoja al abrir la reunión
+  @Post('crear-hoja')
+  crearHoja(@Body() body) {
+    return this.service.crearHojaVacia(
+      body.meetingId,
+      new Date(body.fecha),
+    );
+  }
 
-    if (anio && mes) {
-      return this.service.findByPeriodo(+anio, +mes);
-    }
+  // 🔹 Actualizar una fila (monto)
+  @Put(':id')
+  actualizar(@Param('id') id: string, @Body() body) {
+    return this.service.actualizarFila(+id, body.monto);
+  }
 
-    return this.service.findAll();
+  // 🔹 Obtener créditos por reunión
+  @Get('por-reunion/:meetingId')
+  findByMeeting(@Param('meetingId') meetingId: string) {
+    return this.service.findByMeeting(+meetingId);
   }
 }

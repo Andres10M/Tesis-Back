@@ -24,7 +24,10 @@ function parseDecimal(value: any): number {
 ========================= */
 
 async function main() {
-  const filePath = path.join(__dirname, 'creditos_2024_12.xlsx');
+  // 🔴 ARCHIVO 2025 (NO SE CONFUNDE CON 2024)
+  const filePath = path.join(__dirname, 'creditos_especiales_2025_02.xlsx');
+
+  console.log('📂 Leyendo archivo:', filePath);
 
   const workbook = XLSX.readFile(filePath);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -37,10 +40,14 @@ async function main() {
   console.log('📄 Filas encontradas:', rows.length);
 
   let insertados = 0;
+  let omitidos = 0;
 
   for (const row of rows) {
     const nui = normalizeNui(row.nui);
-    if (!nui) continue;
+    if (!nui) {
+      omitidos++;
+      continue;
+    }
 
     // verificar que el socio exista
     const socio = await prisma.person.findUnique({
@@ -49,6 +56,7 @@ async function main() {
 
     if (!socio) {
       console.log(`⚠️ Socio no existe: ${nui}`);
+      omitidos++;
       continue;
     }
 
@@ -62,7 +70,7 @@ async function main() {
 
     await prisma.creditoEspecial.create({
       data: {
-        socioId: nui,
+        socioId: nui, // o socio.id si tu modelo usa ID numérico
         montoPrestado,
         interes,
         totalPagar,
@@ -76,10 +84,15 @@ async function main() {
   }
 
   console.log('==============================');
-  console.log('✅ Créditos especiales cargados:', insertados);
+  console.log('✅ Créditos 2025 cargados:', insertados);
+  console.log('⚠️ Registros omitidos:', omitidos);
   console.log('==============================');
 }
 
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .catch((err) => {
+    console.error('❌ Error al importar:', err);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

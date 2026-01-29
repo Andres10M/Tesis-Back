@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Get,
-  Param,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { CuotasService } from './cuotas.service';
 import { TipoCuota } from '@prisma/client';
 
@@ -12,58 +6,44 @@ import { TipoCuota } from '@prisma/client';
 export class CuotasController {
   constructor(private readonly service: CuotasService) {}
 
-  // ======================================
-  // ✅ REGISTRO MASIVO DE CUOTAS
-  // ======================================
   @Post('masiva')
   guardarMasiva(
     @Body('meetingId') meetingId: number,
     @Body('tipo') tipo: TipoCuota,
     @Body('sociosPagados') sociosPagados: string[],
   ) {
-    return this.service.guardarCuotaMasiva(
-      meetingId,
-      tipo,
-      sociosPagados,
-    );
+    return this.service.guardarCuotaMasiva(meetingId, tipo, sociosPagados);
   }
 
-  // ======================================
-  // 🔍 LISTAR TODAS LAS CUOTAS DE LA REUNIÓN
-  // (PAGADAS Y NO PAGADAS)
-  // ======================================
   @Get('reunion/:meetingId')
-  obtenerPorReunion(
-    @Param('meetingId') meetingId: string,
-  ) {
-    return this.service.obtenerCuotasPorReunion(
-      Number(meetingId),
-    );
+  obtenerPorReunion(@Param('meetingId') meetingId: string) {
+    return this.service.obtenerCuotasPorReunion(Number(meetingId));
   }
 
-  // ======================================
-  // 🔍 LISTAR CUOTAS POR REUNIÓN Y TIPO
-  // ======================================
   @Get(':meetingId/:tipo')
   listarPorTipo(
     @Param('meetingId') meetingId: string,
     @Param('tipo') tipo: TipoCuota,
   ) {
-    return this.service.listarCuotasPorReunion(
-      Number(meetingId),
-      tipo,
-    );
+    return this.service.listarCuotasPorReunion(Number(meetingId), tipo);
   }
 
-  // ======================================
-  // 📊 RESUMEN DE RECAUDACIÓN
-  // ======================================
   @Get('resumen/:meetingId')
-  resumen(
-    @Param('meetingId') meetingId: string,
+  resumen(@Param('meetingId') meetingId: string) {
+    return this.service.resumenRecaudacion(Number(meetingId));
+  }
+
+  // Endpoints para cuota de ingreso
+  @Get('ingreso/pendientes')
+  pendientesIngreso() {
+    return this.service.listarSociosPendientesIngreso();
+  }
+
+  @Post('ingreso/pagar')
+  pagarIngreso(
+    @Body('nui') nui: string,
+    @Body('monto') monto: number,
   ) {
-    return this.service.resumenRecaudacion(
-      Number(meetingId),
-    );
+    return this.service.pagarCuotaIngreso(nui, monto);
   }
 }
