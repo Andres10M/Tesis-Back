@@ -1,18 +1,20 @@
 import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { CuotasService } from './cuotas.service';
-import { TipoCuota } from '@prisma/client';
 
 @Controller('cuotas')
 export class CuotasController {
   constructor(private readonly service: CuotasService) {}
 
+  // Guardar cuotas masivas (nuevo formato real)
   @Post('masiva')
   guardarMasiva(
-    @Body('meetingId') meetingId: number,
-    @Body('tipo') tipo: TipoCuota,
-    @Body('sociosPagados') sociosPagados: string[],
+    @Body() body: {
+      meetingId: number;
+      pagos2: Record<string, boolean>;
+      pagos20: Record<string, boolean>;
+    },
   ) {
-    return this.service.guardarCuotaMasiva(meetingId, tipo, sociosPagados);
+    return this.service.guardarCuotaMasiva(body);
   }
 
   @Get('reunion/:meetingId')
@@ -20,20 +22,18 @@ export class CuotasController {
     return this.service.obtenerCuotasPorReunion(Number(meetingId));
   }
 
-  @Get(':meetingId/:tipo')
-  listarPorTipo(
-    @Param('meetingId') meetingId: string,
-    @Param('tipo') tipo: TipoCuota,
-  ) {
-    return this.service.listarCuotasPorReunion(Number(meetingId), tipo);
-  }
-
   @Get('resumen/:meetingId')
   resumen(@Param('meetingId') meetingId: string) {
     return this.service.resumenRecaudacion(Number(meetingId));
   }
 
-  // Endpoints para cuota de ingreso
+  // Totales reales (los que no se bajan nunca)
+  @Get('totales/:meetingId')
+  getTotales(@Param('meetingId') meetingId: string) {
+    return this.service.obtenerTotalesReales(Number(meetingId));
+  }
+
+  // Cuota de ingreso
   @Get('ingreso/pendientes')
   pendientesIngreso() {
     return this.service.listarSociosPendientesIngreso();

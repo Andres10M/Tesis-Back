@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
@@ -7,6 +7,9 @@ import { UpdatePersonDto } from './dto/update-person.dto';
 export class PersonService {
   constructor(private prisma: PrismaService) {}
 
+  // ==================================================
+  // TODOS LOS SOCIOS
+  // ==================================================
   findAll() {
     return this.prisma.person.findMany({
       where: { isDelete: false },
@@ -14,36 +17,120 @@ export class PersonService {
     });
   }
 
+  // ==================================================
+  // BUSCAR PARA AUTOCOMPLETADO
+  // ==================================================
+  searchByName(query: string) {
+    if (!query || query.length < 2) return [];
+
+    return this.prisma.person.findMany({
+      where: {
+        isDelete: false,
+        OR: [
+          { firstname: { contains: query, mode: 'insensitive' } },
+          { lastname: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: { orderIndex: 'asc' },
+      take: 10,
+    });
+  }
+
+  // ==================================================
+  // CREAR SOCIO (INACTIVO POR DEFECTO)
+  // ==================================================
   async create(dto: CreatePersonDto) {
     const exists = await this.prisma.person.findUnique({
       where: { nui: dto.nui },
     });
 
-    if (exists) {
-      throw new BadRequestException('La cédula ya existe');
-    }
+    if (exists) throw new BadRequestException('La cédula ya existe');
 
-    // Por defecto status false si no viene
-    const created = await this.prisma.person.create({
+    // NOTA: Aquí creamos al socio como INACTIVO
+    const persona = await this.prisma.person.create({
       data: {
         ...dto,
-        status: dto.status ?? false,
+        status: false,        // socio INACTIVO
+        esSocioActivo: false, // socio INACTIVO
         isDelete: false,
+        fechaIngreso: new Date(),
       },
     });
-    console.log(`✅ Socio creado: ${created.firstname} ${created.lastname} (${created.nui})`);
-    return created;
+
+    return persona;
   }
 
+  // ==================================================
+  // ACTIVAR SOCIO Y CREAR CUENTA CON CAPITAL
+  // ==================================================
+  async activarSocio(nui: string) {
+    const socio = await this.prisma.person.findUnique({ where: { nui } });
+    if (!socio) throw new NotFoundException('Socio no encontrado');
+    if (socio.status) throw new BadRequestException('El socio ya está activo');
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1️⃣ Crear cuenta principal
+      const cuenta = await tx.cuenta.create({
+        data: {
+          personId: socio.nui,
+          description: 'Cuenta principal',
+          balance: 395, // 275 + 120
+          active: true,
+        },
+      });
+
+      // 2️⃣ Crear finanzas
+      await tx.finanzasCuenta.create({
+        data: {
+          cuentaId: cuenta.id,
+          capitalDic2024: 0,
+          aporteMensual2025: 120,
+          capitalJunio2025: 395,
+        },
+      });
+
+      // 3️⃣ Registrar cuota de ingreso
+      await tx.cuotaSocio.create({
+        data: {
+          socioId: socio.nui,
+          tipo: 'INGRESO',
+          monto: 275,
+          pagado: true,
+          fechaPago: new Date(),
+        },
+      });
+
+      // 4️⃣ Registrar aporte mensual
+      await tx.aporte.create({
+        data: {
+          cuentaId: cuenta.id,
+          amount: 120,
+          anio: 2025,
+          mes: 1,
+        },
+      });
+
+      // 5️⃣ Activar socio
+      await tx.person.update({
+        where: { nui },
+        data: { status: true, esSocioActivo: true },
+      });
+
+      return { message: 'Socio activado y cuenta creada' };
+    });
+  }
+
+  // ==================================================
+  // ACTUALIZAR SOCIO (CON O SIN CAMBIO DE CÉDULA)
+  // ==================================================
   async updateSafe(oldNui: string, dto: UpdatePersonDto) {
     const person = await this.prisma.person.findUnique({
       where: { nui: oldNui },
     });
 
-    if (!person) {
-      throw new BadRequestException('Socio no encontrado');
-    }
+    if (!person) throw new BadRequestException('Socio no encontrado');
 
+    // SIN CAMBIO DE CÉDULA
     if (!dto.nui || dto.nui === oldNui) {
       const updated = await this.prisma.person.update({
         where: { nui: oldNui },
@@ -56,18 +143,14 @@ export class PersonService {
           categoryId: dto.categoryId ?? person.categoryId,
         },
       });
-      console.log(`✏️ Socio actualizado (sin cambio de cédula): ${updated.firstname} ${updated.lastname} (${updated.nui})`);
+
       return updated;
     }
 
-    return this.prisma.$transaction(async tx => {
-      const exists = await tx.person.findUnique({
-        where: { nui: dto.nui! },
-      });
-
-      if (exists) {
-        throw new BadRequestException('La nueva cédula ya existe');
-      }
+    // CON CAMBIO DE CÉDULA
+    return this.prisma.$transaction(async (tx) => {
+      const exists = await tx.person.findUnique({ where: { nui: dto.nui! } });
+      if (exists) throw new BadRequestException('La nueva cédula ya existe');
 
       const created = await tx.person.create({
         data: {
@@ -93,18 +176,39 @@ export class PersonService {
         data: { isDelete: true },
       });
 
-      console.log(`✏️ Socio actualizado con cambio de cédula: ${created.firstname} ${created.lastname} (${created.nui})`);
       return created;
     });
   }
 
+  // ==================================================
+  // ELIMINAR SOCIO (LÓGICO)
+  // ==================================================
   async remove(nui: string) {
-    const removed = await this.prisma.person.update({
+    await this.prisma.person.update({
       where: { nui },
       data: { isDelete: true },
     });
 
-    console.log(`🗑️ Socio eliminado: ${removed.firstname} ${removed.lastname} (${removed.nui})`);
     return { message: 'Socio eliminado correctamente' };
+  }
+
+  // ==================================================
+  // LISTAR SOCIOS ACTIVOS
+  // ==================================================
+  async listarActivos() {
+    return this.prisma.person.findMany({
+      where: { isDelete: false, esSocioActivo: true },
+      orderBy: { orderIndex: 'asc' },
+    });
+  }
+
+  // ==================================================
+  // LISTAR SOCIOS PENDIENTES DE CUOTA DE INGRESO
+  // ==================================================
+  async listarPendientesIngreso() {
+    return this.prisma.person.findMany({
+      where: { isDelete: false, esSocioActivo: false },
+      orderBy: { orderIndex: 'asc' },
+    });
   }
 }

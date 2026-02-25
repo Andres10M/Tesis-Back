@@ -13,22 +13,36 @@ import { CuentasService } from './cuenta.service';
 export class CuentasController {
   constructor(private readonly cuentasService: CuentasService) {}
 
-  // Importar Excel
+  // ===============================
+  // IMPORTAR EXCEL
+  // ===============================
   @Post('import-excel')
   @UseInterceptors(FileInterceptor('file'))
   async importExcel(@UploadedFile() file: Express.Multer.File) {
     return this.cuentasService.processExcel(file);
   }
 
-  // Listar todas las cuentas
+  // ===============================
+  // LISTAR TODAS LAS CUENTAS
+  // ===============================
   @Get()
   async findAll() {
     return this.cuentasService.findAll();
   }
 
-  // Buscar por NUI (cédula exacta)
+  // ===============================
+  // BUSCAR CUENTA POR CÉDULA
+  // ===============================
   @Get(':nui')
   async findByNui(@Param('nui') nui: string) {
     return this.cuentasService.findByNui(nui);
+  }
+
+  // ===============================
+  // 🔥 RESUMEN COMPLETO DEL SOCIO
+  // ===============================
+  @Get('resumen/:nui')
+  async resumenSocio(@Param('nui') nui: string) {
+    return this.cuentasService.resumenSocio(nui);
   }
 }

@@ -17,13 +17,21 @@ model User {
   id       Int     @id @default(autoincrement())
   username String  @unique
   password String
+
+  role     Role    @default(ADMIN) // 👈 AGREGA ESTO
+
   enabled  Boolean @default(true)
   locked   Boolean @default(false)
+
 
   personId String? @unique
   person   Person? @relation(fields: [personId], references: [nui])
 
   @@map("users")
+} 
+
+enum Role {
+  ADMIN
 }
 
 model Person {
@@ -119,7 +127,7 @@ model CreditoMensual {
 
 //
 // ============================
-// APORTES ($2)
+// APORTES
 // ============================
 //
 
@@ -190,7 +198,7 @@ model Amortization {
 
 //
 // ============================
-// CRÉDITOS ESPECIALES
+// CRÉDITOS ESPECIALES (FIX REAL)
 // ============================
 //
 
@@ -203,9 +211,13 @@ model CreditoEspecial {
   anio          Int
   mes           Int
   fechaCredito  DateTime
+
   estado        EstadoCreditoEspecial @default(PENDIENTE)
 
-  // 🔽 TEMPORALMENTE OPCIONAL
+  // ===== LOS DOS CAMPOS CLAVE =====
+  pagado        Boolean  @default(false)
+  fechaPago     DateTime?
+
   meetingId Int?
   meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
@@ -214,9 +226,11 @@ model CreditoEspecial {
 
   createdAt DateTime @default(now())
 
+  @@index([anio, mes])
+  @@index([meetingId])
+  @@index([socioId])
   @@map("credito_especial")
 }
-
 
 model AbonoCreditoEspecial {
   id                Int      @id @default(autoincrement())
@@ -226,7 +240,6 @@ model AbonoCreditoEspecial {
   registradoPor     String?
 
   creditoEspecial CreditoEspecial @relation(fields: [creditoEspecialId], references: [id])
-
   @@map("abono_credito_especial")
 }
 
@@ -237,7 +250,7 @@ enum EstadoCreditoEspecial {
 
 //
 // ============================
-// CUOTAS (INGRESO / 20 / 2)
+// CUOTAS
 // ============================
 //
 
@@ -258,7 +271,6 @@ model CuotaSocio {
   @@unique([socioId, meetingId, tipo])
 }
 
-
 enum TipoCuota {
   INGRESO
   CUOTA_20
@@ -267,7 +279,7 @@ enum TipoCuota {
 
 //
 // ============================
-// REUNIONES / ASISTENCIAS
+// REUNIONES
 // ============================
 //
 
@@ -279,9 +291,7 @@ model Meeting {
   isClosed    Boolean  @default(false)
 
   attendances Attendance[]
-  cuotas      CuotaSocio[] 
-
-  // 🔽 NUEVO
+  cuotas      CuotaSocio[]
   creditosEspeciales CreditoEspecial[]
 }
 

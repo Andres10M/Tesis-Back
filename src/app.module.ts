@@ -35,6 +35,8 @@ import { MeetingModule } from './meeting/meeting.module';
 import { PagoMultaModule } from './pago-multa/pago-multa.module';
 import { CreditosEspecialesModule } from './creditos-especiales/creditos-especiales.module';
 import { CuotasModule } from './cuotas/cuotas.module';
+import { AuthModule } from './auth/auth.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -62,6 +64,8 @@ import { CuotasModule } from './cuotas/cuotas.module';
     PagoMultaModule,
     CreditosEspecialesModule,
     CuotasModule,
+    AuthModule,
+    DashboardModule,
   ],
   controllers: [],
   providers: [],
