@@ -37,13 +37,14 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'http://72.60.10.162',      // frontend vía IP
+      'http://72.60.10.162', 
+        'http://72.60.10.162:8080'    // frontend vía IP
     ],
     credentials: true,
   });
 
-  await app.listen(3000, '0.0.0.0');  // 🔥 CRÍTICO en Docker/VPS
+  await app.listen(process.env.PORT || 4000, '0.0.0.0');
 
-  console.log('API running on port 3000');
+console.log(`API running on port ${process.env.PORT}`);
 }
 bootstrap();
