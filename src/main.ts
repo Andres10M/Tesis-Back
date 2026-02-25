@@ -27,6 +27,8 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -36,15 +38,16 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: [
-      'https://72.60.10.162', 
-        'https://72.60.10.162:8080'    // frontend vía IP
-    ],
+    origin: true,
     credentials: true,
   });
 
-  await app.listen(process.env.PORT || 4000, '0.0.0.0');
+  const port = process.env.PORT || 4000;
 
-console.log(`API running on port ${process.env.PORT}`);
+  await app.listen(port, '0.0.0.0');
+
+  
+  console.log(`API running on port ${process.env.PORT}`);
 }
+
 bootstrap();
