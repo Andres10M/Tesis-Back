@@ -37,8 +37,8 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'http://72.60.10.162', 
-        'http://72.60.10.162:8080'    // frontend vía IP
+      'https://72.60.10.162', 
+        'https://72.60.10.162:8080'    // frontend vía IP
     ],
     credentials: true,
   });
