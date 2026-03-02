@@ -8,49 +8,92 @@ export class DashboardService {
   async getResumen() {
     const hoy = new Date();
 
-    // 👥 Total socios activos
-    const totalSocios = await this.prisma.person.count({
-      where: {
-        esSocioActivo: true,
-        isDelete: false,
-      },
-    });
+    const [
+      totalSocios,
+      cuentas,
+      creditosNormales,
+      creditosEspeciales,
+      ultimaReunion,
+      multasPendientes,
+      proximaReunion,
+    ] = await Promise.all([
+      // 👥 Total socios activos
+      this.prisma.person.count({
+        where: {
+          esSocioActivo: true,
+          isDelete: false,
+        },
+      }),
 
-    // 💰 Total ahorros acumulados
-    const cuentas = await this.prisma.cuenta.aggregate({
-      _sum: { balance: true },
-    });
+      // 💰 Total ahorros acumulados
+      this.prisma.cuenta.aggregate({
+        _sum: { balance: true },
+      }),
 
-    const totalAhorros = cuentas._sum.balance?.toNumber() || 0;
+      // 💳 Créditos normales activos (SUMA REAL)
+      this.prisma.credit.aggregate({
+        where: {
+          status: 'ACTIVO',
+        },
+        _sum: {
+          amount: true, // ✅ campo correcto
+        },
+      }),
 
-    // 💳 Créditos activos normales
-    const creditosActivos = await this.prisma.credit.count({
-      where: {
-        status: 'ACTIVO',
-      },
-    });
-
-    // 💳 Créditos especiales pendientes
-    const creditosEspecialesActivos =
-      await this.prisma.creditoEspecial.count({
+      // 💳 Créditos especiales pendientes (SUMA REAL)
+      this.prisma.creditoEspecial.aggregate({
         where: {
           estado: 'PENDIENTE',
         },
-      });
+        _sum: {
+          montoPrestado: true, // ✅ campo correcto
+        },
+      }),
+
+      // 📅 Última reunión cerrada
+      this.prisma.meeting.findFirst({
+        where: {
+          isClosed: true,
+        },
+        orderBy: {
+          fecha: 'desc',
+        },
+      }),
+
+      // ⚠️ Multas pendientes
+      this.prisma.attendance.aggregate({
+        where: {
+          multa: { gt: 0 },
+          justificado: false,
+        },
+        _sum: {
+          multa: true,
+        },
+      }),
+
+      // 📅 Próxima reunión
+      this.prisma.meeting.findFirst({
+        where: {
+          fecha: { gt: hoy },
+        },
+        orderBy: {
+          fecha: 'asc',
+        },
+      }),
+    ]);
+
+    // 💰 Totales convertidos correctamente
+    const totalAhorros =
+      cuentas._sum?.balance?.toNumber() || 0;
 
     const totalCreditosActivos =
-      creditosActivos + creditosEspecialesActivos;
+      (creditosNormales._sum?.amount?.toNumber() || 0) +
+      (creditosEspeciales._sum?.montoPrestado?.toNumber() || 0);
 
-    // 📅 Última reunión cerrada
-    const ultimaReunion = await this.prisma.meeting.findFirst({
-      where: {
-        isClosed: true,
-      },
-      orderBy: {
-        fecha: 'desc',
-      },
-    });
+    const totalMultasPendientes =
+      multasPendientes._sum?.multa?.toNumber() || 0;
 
+    // 📅 Total recaudado última reunión
     let totalRecaudadoUltimaReunion = 0;
 
     if (ultimaReunion) {
@@ -65,32 +108,8 @@ export class DashboardService {
       });
 
       totalRecaudadoUltimaReunion =
-        cuotas._sum.monto?.toNumber() || 0;
+        cuotas._sum?.monto?.toNumber() || 0;
     }
-
-    // ⚠️ Multas pendientes
-    const multasPendientes = await this.prisma.attendance.aggregate({
-      where: {
-        multa: { gt: 0 },
-        justificado: false,
-      },
-      _sum: {
-        multa: true,
-      },
-    });
-
-    const totalMultasPendientes =
-      multasPendientes._sum.multa?.toNumber() || 0;
-
-    // 📅 Próxima reunión
-    const proximaReunion = await this.prisma.meeting.findFirst({
-      where: {
-        fecha: { gt: hoy },
-      },
-      orderBy: {
-        fecha: 'asc',
-      },
-    });
 
     return {
       totalSocios,
