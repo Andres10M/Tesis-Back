@@ -10,8 +10,8 @@ function parseNumber(value: any): number {
 }
 
 async function main() {
-  const filePath = path.join(__dirname, 'finanzas.xlsx');
-
+  
+const filePath = path.resolve(process.cwd(), 'src/scripts/finanzas.xlsx');
   const workbook = XLSX.readFile(filePath);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: null });
