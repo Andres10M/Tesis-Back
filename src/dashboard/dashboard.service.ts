@@ -10,7 +10,7 @@ export class DashboardService {
 
     const [
       totalSocios,
-      cuentas,
+      finanzas,
       creditosNormales,
       creditosEspeciales,
       ultimaReunion,
@@ -25,9 +25,11 @@ export class DashboardService {
         },
       }),
 
-      // 💰 Total ahorros acumulados
-      this.prisma.cuenta.aggregate({
-        _sum: { balance: true },
+      // 💰 TOTAL REAL DE AHORROS (desde FinanzasCuenta)
+      this.prisma.finanzasCuenta.aggregate({
+        _sum: {
+          capitalJunio2025: true,
+        },
       }),
 
       // 💳 Créditos normales activos (SUMA REAL)
@@ -36,7 +38,7 @@ export class DashboardService {
           status: 'ACTIVO',
         },
         _sum: {
-          amount: true, // ✅ campo correcto
+          amount: true,
         },
       }),
 
@@ -46,7 +48,7 @@ export class DashboardService {
           estado: 'PENDIENTE',
         },
         _sum: {
-          montoPrestado: true, // ✅ campo correcto
+          montoPrestado: true,
         },
       }),
 
@@ -82,14 +84,16 @@ export class DashboardService {
       }),
     ]);
 
-    // 💰 Totales convertidos correctamente
+    // 💰 TOTAL AHORROS CORRECTO
     const totalAhorros =
-      cuentas._sum?.balance?.toNumber() || 0;
+      finanzas._sum?.capitalJunio2025?.toNumber() || 0;
 
+    // 💳 TOTAL CRÉDITOS
     const totalCreditosActivos =
       (creditosNormales._sum?.amount?.toNumber() || 0) +
       (creditosEspeciales._sum?.montoPrestado?.toNumber() || 0);
 
+    // ⚠️ TOTAL MULTAS
     const totalMultasPendientes =
       multasPendientes._sum?.multa?.toNumber() || 0;
 
