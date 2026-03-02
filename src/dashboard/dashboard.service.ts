@@ -25,12 +25,10 @@ export class DashboardService {
         },
       }),
 
-      // 💰 SUMA DE TODAS LAS COLUMNAS DE AHORRO
+      // 💰 SOLO CAPITAL CONSOLIDADO REAL
       this.prisma.finanzasCuenta.aggregate({
         _sum: {
-          capitalDic2024: true,
-          aporteMensual2025: true,
-          capitalJunio2025: true,
+          capitalJunio2025: true, // 👈 ESTA ES LA COLUMNA CORRECTA
         },
       }),
 
@@ -86,20 +84,23 @@ export class DashboardService {
       }),
     ]);
 
-    // 💰 TOTAL AHORROS ACUMULADO REAL
-    const totalAhorros =
-      (finanzas._sum?.capitalDic2024?.toNumber() || 0) +
-      (finanzas._sum?.aporteMensual2025?.toNumber() || 0) +
-      (finanzas._sum?.capitalJunio2025?.toNumber() || 0);
+    // 💰 TOTAL AHORROS (REDONDEADO A 2 DECIMALES)
+    const totalAhorros = Number(
+      (finanzas._sum?.capitalJunio2025?.toNumber() || 0).toFixed(2),
+    );
 
     // 💳 TOTAL CRÉDITOS ACTIVOS
-    const totalCreditosActivos =
-      (creditosNormales._sum?.amount?.toNumber() || 0) +
-      (creditosEspeciales._sum?.montoPrestado?.toNumber() || 0);
+    const totalCreditosActivos = Number(
+      (
+        (creditosNormales._sum?.amount?.toNumber() || 0) +
+        (creditosEspeciales._sum?.montoPrestado?.toNumber() || 0)
+      ).toFixed(2),
+    );
 
     // ⚠️ TOTAL MULTAS
-    const totalMultasPendientes =
-      multasPendientes._sum?.multa?.toNumber() || 0;
+    const totalMultasPendientes = Number(
+      (multasPendientes._sum?.multa?.toNumber() || 0).toFixed(2),
+    );
 
     // 📅 TOTAL RECAUDADO ÚLTIMA REUNIÓN
     let totalRecaudadoUltimaReunion = 0;
@@ -115,8 +116,9 @@ export class DashboardService {
         },
       });
 
-      totalRecaudadoUltimaReunion =
-        cuotas._sum?.monto?.toNumber() || 0;
+      totalRecaudadoUltimaReunion = Number(
+        (cuotas._sum?.monto?.toNumber() || 0).toFixed(2),
+      );
     }
 
     return {
