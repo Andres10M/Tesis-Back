@@ -327,3 +327,4 @@ enum EstadoAsistencia {
   TARDE
   FALTA
 }
+//hola como estas
